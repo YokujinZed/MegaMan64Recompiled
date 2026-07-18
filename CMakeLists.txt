@@ -45,6 +45,24 @@ set(RT64_STATIC TRUE)
 set(RT64_SDL_WINDOW_VULKAN TRUE)
 add_compile_definitions(HLSL_CPU)
 
+# OpenXR loader for VR support. Windows-only for now (the XR layer binds D3D12).
+# Must be declared before lib/rt64 is added so the openxr_loader target exists
+# when rt64 links it (RT64_XR_SUPPORT).
+if (WIN32)
+    include(FetchContent)
+    set(DYNAMIC_LOADER OFF CACHE BOOL "" FORCE)
+    set(BUILD_TESTS OFF CACHE BOOL "" FORCE)
+    set(BUILD_API_LAYERS OFF CACHE BOOL "" FORCE)
+    set(BUILD_CONFORMANCE_TESTS OFF CACHE BOOL "" FORCE)
+    FetchContent_Declare(
+        OpenXRSDK
+        URL https://github.com/KhronosGroup/OpenXR-SDK/archive/refs/tags/release-1.1.61.tar.gz
+        URL_HASH SHA256=d5e2773d282642e6e250bd10266f316fc3ff3b8602c83db009a1f434205998e6
+    )
+    FetchContent_MakeAvailable(OpenXRSDK)
+    set(RT64_XR_SUPPORT TRUE)
+endif()
+
 if (RECOMP_FLATPAK)
     add_compile_definitions(RECOMP_FLATPAK)
 endif()
@@ -180,6 +198,8 @@ set (SOURCES
 #        ${CMAKE_SOURCE_DIR}/src/game/recomp_actor_api.cpp
         ${CMAKE_SOURCE_DIR}/src/game/recomp_data_api.cpp
         ${CMAKE_SOURCE_DIR}/src/game/rom_decompression.cpp
+
+        ${CMAKE_SOURCE_DIR}/src/vr/vr_input.cpp
 
         ${CMAKE_SOURCE_DIR}/src/ui/ui_renderer.cpp
         ${CMAKE_SOURCE_DIR}/src/ui/ui_state.cpp

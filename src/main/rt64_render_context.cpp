@@ -12,8 +12,10 @@
 #include "ultramodern/config.hpp"
 
 #include "zelda_render.h"
+#include "zelda_config.h"
 #include "recomp_ui.h"
 #include "concurrentqueue.h"
+#include <mutex>
 
 static RT64::UserConfiguration::Antialiasing device_max_msaa = RT64::UserConfiguration::Antialiasing::None;
 static bool sample_positions_supported = false;
@@ -283,6 +285,17 @@ zelda64::renderer::RT64Context::RT64Context(uint8_t* rdram, ultramodern::rendere
             break;
     }
 
+#ifdef RT64_XR_SUPPORT
+    // VR opt-in from vr.json. The XR layer binds D3D12, so resolve an Automatic
+    // API choice to D3D12 up front; an explicit non-D3D12 choice runs flat.
+    if (zelda64::get_vr_enabled()) {
+        app->xrEnabled = true;
+        if (app->userConfig.graphicsAPI == RT64::UserConfiguration::GraphicsAPI::Automatic) {
+            app->userConfig.graphicsAPI = RT64::UserConfiguration::GraphicsAPI::D3D12;
+        }
+    }
+#endif
+
     // Set up the RT64 application.
     uint32_t thread_id = 0;
 #ifdef _WIN32
@@ -314,9 +327,37 @@ zelda64::renderer::RT64Context::RT64Context(uint8_t* rdram, ultramodern::rendere
     }
 
     high_precision_fb_enabled = app->shaderLibrary->usesHDR;
+
+#ifdef RT64_XR_SUPPORT
+    set_vr_input_source(app->xrContext.get());
+#endif
 }
 
-zelda64::renderer::RT64Context::~RT64Context() = default;
+#ifdef RT64_XR_SUPPORT
+// Live XR context for the input mux. Written by the gfx thread on renderer
+// create/shutdown, read by the SI game thread at controller-poll rate.
+static std::mutex vr_input_mutex;
+static RT64::XRContext *vr_input_source = nullptr;
+
+void zelda64::renderer::set_vr_input_source(RT64::XRContext *context) {
+    const std::lock_guard<std::mutex> lock(vr_input_mutex);
+    vr_input_source = context;
+}
+
+RT64::XRInputSnapshot zelda64::renderer::sample_vr_input() {
+    const std::lock_guard<std::mutex> lock(vr_input_mutex);
+    if (vr_input_source != nullptr) {
+        return vr_input_source->sampleInput();
+    }
+    return {};
+}
+#endif
+
+zelda64::renderer::RT64Context::~RT64Context() {
+#ifdef RT64_XR_SUPPORT
+    set_vr_input_source(nullptr);
+#endif
+}
 
 void zelda64::renderer::RT64Context::send_dl(const OSTask* task) {
     check_texture_pack_actions();
@@ -330,6 +371,10 @@ void zelda64::renderer::RT64Context::update_screen() {
 }
 
 void zelda64::renderer::RT64Context::shutdown() {
+#ifdef RT64_XR_SUPPORT
+    // Stop handing out XR input before the context dies inside app->end().
+    set_vr_input_source(nullptr);
+#endif
     if (app != nullptr) {
         app->end();
     }

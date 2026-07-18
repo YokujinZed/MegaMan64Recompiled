@@ -8,6 +8,10 @@
 #include "ultramodern/renderer_context.hpp"
 #include "librecomp/mods.hpp"
 
+#ifdef RT64_XR_SUPPORT
+#include "xr/rt64_xr_context.h"
+#endif
+
 namespace RT64 {
     struct Application;
 }
@@ -45,6 +49,13 @@ namespace zelda64 {
         RT64::UserConfiguration::Antialiasing RT64MaxMSAA();
         bool RT64SamplePositionsSupported();
         bool RT64HighPrecisionFBEnabled();
+
+#ifdef RT64_XR_SUPPORT
+        // VR input for the controller mux. Snapshot is all-inactive when VR is
+        // off, the renderer is down, or the XR session is not running.
+        void set_vr_input_source(RT64::XRContext *context);
+        RT64::XRInputSnapshot sample_vr_input();
+#endif
 
         void trigger_texture_pack_update();
         void enable_texture_pack(const recomp::mods::ModContext& context, const recomp::mods::ModHandle& mod);

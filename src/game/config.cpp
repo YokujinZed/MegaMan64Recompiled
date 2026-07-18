@@ -5,6 +5,7 @@
 #include "zelda_support.h"
 #include "ultramodern/config.hpp"
 #include "librecomp/files.hpp"
+#include <atomic>
 #include <filesystem>
 #include <fstream>
 #include <iomanip>
@@ -22,6 +23,7 @@ constexpr std::u8string_view general_filename = u8"general.json";
 constexpr std::u8string_view graphics_filename = u8"graphics.json";
 constexpr std::u8string_view controls_filename = u8"controls.json";
 constexpr std::u8string_view sound_filename = u8"sound.json";
+constexpr std::u8string_view vr_filename = u8"vr.json";
 
 constexpr auto res_default            = ultramodern::renderer::Resolution::Auto;
 constexpr auto hr_default             = ultramodern::renderer::HUDRatioMode::Clamp16x9;
@@ -448,6 +450,39 @@ bool load_controls_config(const std::filesystem::path& path) {
     return true;
 }
 
+static std::atomic_bool vr_enabled = false;
+
+bool zelda64::get_vr_enabled() {
+    return vr_enabled.load();
+}
+
+void zelda64::set_vr_enabled(bool enabled) {
+    vr_enabled.store(enabled);
+}
+
+void zelda64::reset_vr_settings() {
+    vr_enabled.store(false);
+}
+
+bool save_vr_config(const std::filesystem::path& path) {
+    nlohmann::json config_json{};
+
+    config_json["vr_enabled"] = zelda64::get_vr_enabled();
+
+    return save_json_with_backups(path, config_json);
+}
+
+bool load_vr_config(const std::filesystem::path& path) {
+    nlohmann::json config_json{};
+    if (!read_json_with_backups(path, config_json)) {
+        return false;
+    }
+
+    zelda64::reset_vr_settings();
+    call_if_key_exists(zelda64::set_vr_enabled, config_json, "vr_enabled");
+    return true;
+}
+
 bool save_sound_config(const std::filesystem::path& path) {
     nlohmann::json config_json{};
 
@@ -506,6 +541,11 @@ void zelda64::load_config() {
         zelda64::reset_sound_settings();
         save_sound_config(sound_path);
     }
+
+    if (!load_vr_config(recomp_dir / vr_filename)) {
+        zelda64::reset_vr_settings();
+        save_vr_config(recomp_dir / vr_filename);
+    }
 }
 
 void zelda64::save_config() {
@@ -523,4 +563,5 @@ void zelda64::save_config() {
     save_graphics_config(recomp_dir / graphics_filename);
     save_controls_config(recomp_dir / controls_filename);
     save_sound_config(recomp_dir / sound_filename);
+    save_vr_config(recomp_dir / vr_filename);
 }

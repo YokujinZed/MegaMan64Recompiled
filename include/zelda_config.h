@@ -20,9 +20,14 @@ namespace zelda64 {
     void reset_single_input_binding(recomp::InputDevice device, recomp::GameInput input);
 
     std::filesystem::path get_app_folder_path();
-    
+
     bool get_debug_mode_enabled();
     void set_debug_mode_enabled(bool enabled);
+
+    // VR. Read once at renderer creation (launch-only); persisted in vr.json.
+    bool get_vr_enabled();
+    void set_vr_enabled(bool enabled);
+    void reset_vr_settings();
     
     enum class FilmGrainMode {
         On,

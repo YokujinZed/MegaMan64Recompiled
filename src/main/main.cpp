@@ -32,6 +32,7 @@
 #include "zelda_config.h"
 #include "zelda_sound.h"
 #include "zelda_render.h"
+#include "../vr/vr_input.h"
 #include "zelda_support.h"
 #include "zelda_game.h"
 #include "recomp_data.h"
@@ -689,8 +690,15 @@ int main(int argc, char** argv) {
     };
 
     ultramodern::input::callbacks_t input_callbacks{
+#ifdef RT64_XR_SUPPORT
+        // VR mux: forwards to the recomp callbacks and ORs in XR controller
+        // state. Identical behavior when vr_enabled is off.
+        .poll_input = vr::poll_inputs,
+        .get_input = vr::get_n64_input,
+#else
         .poll_input = recomp::poll_inputs,
         .get_input = recomp::get_n64_input,
+#endif
         .set_rumble = recomp::set_rumble,
         .get_connected_device_info = recomp::get_connected_device_info,
     };
