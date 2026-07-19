@@ -23,10 +23,39 @@ constexpr uint16_t N64_C_DOWN = 0x0004;  // Interact
 constexpr uint16_t N64_C_LEFT = 0x0002;  // Special Weapon
 constexpr uint16_t N64_C_RIGHT = 0x0001; // Look
 
-constexpr float dpad_threshold = 0.4f;
-constexpr float rotate_threshold = 0.5f;
+constexpr float stick_deadzone = 0.35f;
+// Sector shaping for d-pad synthesis: the secondary axis only registers when
+// the push is genuinely diagonal, so an imperfect left push turns left instead
+// of also walking. tan(30deg) = cardinal sectors are +-30deg wide.
+constexpr float diagonal_ratio = 0.577f;
+// Horizontal wins ties: turning is the precision-critical input in MM64.
+constexpr float horizontal_bias = 0.85f;
+constexpr float rotate_threshold = 0.45f;
 constexpr float trigger_threshold = 0.6f;
 constexpr float squeeze_threshold = 0.7f;
+
+static uint16_t synthesize_dpad(float x, float y) {
+    const float ax = std::abs(x);
+    const float ay = std::abs(y);
+    if (std::max(ax, ay) < stick_deadzone) {
+        return 0;
+    }
+
+    uint16_t bits = 0;
+    if (ax >= horizontal_bias * ay) {
+        bits |= (x > 0.0f) ? N64_DPAD_RIGHT : N64_DPAD_LEFT;
+        if (ay > diagonal_ratio * ax) {
+            bits |= (y > 0.0f) ? N64_DPAD_UP : N64_DPAD_DOWN;
+        }
+    }
+    else {
+        bits |= (y > 0.0f) ? N64_DPAD_UP : N64_DPAD_DOWN;
+        if (ax > diagonal_ratio * ay) {
+            bits |= (x > 0.0f) ? N64_DPAD_RIGHT : N64_DPAD_LEFT;
+        }
+    }
+    return bits;
+}
 
 void vr::poll_inputs() {
     // XR action sampling runs on the XR frame thread; the SI thread only ever
@@ -57,10 +86,7 @@ bool vr::get_n64_input(int controller_num, uint16_t *buttons, float *x, float *y
     uint16_t vr_buttons = 0;
 
     // Left controller: locomotion + support buttons.
-    if (snap.left.stickY > dpad_threshold)  vr_buttons |= N64_DPAD_UP;
-    if (snap.left.stickY < -dpad_threshold) vr_buttons |= N64_DPAD_DOWN;
-    if (snap.left.stickX < -dpad_threshold) vr_buttons |= N64_DPAD_LEFT;
-    if (snap.left.stickX > dpad_threshold)  vr_buttons |= N64_DPAD_RIGHT;
+    vr_buttons |= synthesize_dpad(snap.left.stickX, snap.left.stickY);
     if (snap.left.trigger > trigger_threshold) vr_buttons |= N64_Z;
     if (snap.left.squeeze > squeeze_threshold) vr_buttons |= N64_L;
     if (snap.left.primaryButton)   vr_buttons |= N64_C_LEFT;  // X: Special Weapon
