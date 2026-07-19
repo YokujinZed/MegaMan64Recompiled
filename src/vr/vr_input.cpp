@@ -3,6 +3,7 @@
 #ifdef RT64_XR_SUPPORT
 
 #include <algorithm>
+#include <cmath>
 
 #include "recomp_input.h"
 #include "zelda_render.h"
@@ -23,38 +24,95 @@ constexpr uint16_t N64_C_DOWN = 0x0004;  // Interact
 constexpr uint16_t N64_C_LEFT = 0x0002;  // Special Weapon
 constexpr uint16_t N64_C_RIGHT = 0x0001; // Look
 
-constexpr float stick_deadzone = 0.35f;
-// Sector shaping for d-pad synthesis: the secondary axis only registers when
-// the push is genuinely diagonal, so an imperfect left push turns left instead
-// of also walking. tan(30deg) = cardinal sectors are +-30deg wide.
-constexpr float diagonal_ratio = 0.577f;
-// Horizontal wins ties: turning is the precision-critical input in MM64.
-constexpr float horizontal_bias = 0.85f;
 constexpr float rotate_threshold = 0.45f;
 constexpr float trigger_threshold = 0.6f;
 constexpr float squeeze_threshold = 0.7f;
 
-static uint16_t synthesize_dpad(float x, float y) {
-    const float ax = std::abs(x);
-    const float ay = std::abs(y);
-    if (std::max(ax, ay) < stick_deadzone) {
-        return 0;
+// Sticky 8-way sector mapping for the movement stick. Cardinal sectors are
+// 60 degrees wide and diagonals only 30, so pure walk/turn dominate and
+// turn-while-walking needs a deliberately diagonal push. The engaged sector is
+// held until the stick clearly leaves it (angular + radial hysteresis), which
+// is what makes discrete-from-analog input feel stable instead of flickery.
+constexpr float engage_radius = 0.42f;
+constexpr float release_radius = 0.30f;
+constexpr float cardinal_half_width = 30.0f; // degrees
+constexpr float sector_hysteresis = 8.0f;    // degrees
+
+namespace {
+    struct SectorResult {
+        uint16_t bits = 0;
+        // Unit direction of the sector center, so analog output can be made
+        // consistent with the d-pad bits instead of leaking the raw push.
+        float dirX = 0.0f;
+        float dirY = 0.0f;
+        int sector = -1; // 0 = E, counting counter-clockwise in 45deg steps
+    };
+
+    // Sector centers: 0=E(right), 1=NE, 2=N(up), 3=NW, 4=W, 5=SW, 6=S, 7=SE.
+    constexpr uint16_t sector_bits[8] = {
+        N64_DPAD_RIGHT,
+        N64_DPAD_UP | N64_DPAD_RIGHT,
+        N64_DPAD_UP,
+        N64_DPAD_UP | N64_DPAD_LEFT,
+        N64_DPAD_LEFT,
+        N64_DPAD_DOWN | N64_DPAD_LEFT,
+        N64_DPAD_DOWN,
+        N64_DPAD_DOWN | N64_DPAD_RIGHT,
+    };
+
+    float angular_distance(float a, float b) {
+        float d = std::abs(a - b);
+        return (d > 180.0f) ? 360.0f - d : d;
     }
 
-    uint16_t bits = 0;
-    if (ax >= horizontal_bias * ay) {
-        bits |= (x > 0.0f) ? N64_DPAD_RIGHT : N64_DPAD_LEFT;
-        if (ay > diagonal_ratio * ax) {
-            bits |= (y > 0.0f) ? N64_DPAD_UP : N64_DPAD_DOWN;
-        }
+    // Half-width of a sector: cardinals get the wide cones, diagonals the rest
+    // (30deg cardinals leave 15deg half-width diagonals).
+    float sector_half_width(int sector) {
+        return (sector % 2 == 0) ? cardinal_half_width : (45.0f - cardinal_half_width);
     }
-    else {
-        bits |= (y > 0.0f) ? N64_DPAD_UP : N64_DPAD_DOWN;
-        if (ax > diagonal_ratio * ay) {
-            bits |= (x > 0.0f) ? N64_DPAD_RIGHT : N64_DPAD_LEFT;
+
+    SectorResult map_stick_sector(float x, float y, int held_sector) {
+        SectorResult result;
+        const float mag = std::sqrt(x * x + y * y);
+        const float needed = (held_sector >= 0) ? release_radius : engage_radius;
+        if (mag < needed) {
+            return result;
         }
+
+        const float angle = std::atan2(y, x) * 57.29578f; // [-180, 180]
+        const float wrapped = (angle < 0.0f) ? angle + 360.0f : angle;
+
+        // Stay in the held sector while the angle is within its widened bounds.
+        if (held_sector >= 0) {
+            const float center = held_sector * 45.0f;
+            if (angular_distance(wrapped, center) <= sector_half_width(held_sector) + sector_hysteresis) {
+                result.sector = held_sector;
+            }
+        }
+
+        if (result.sector < 0) {
+            // Pick the sector whose (unwidened) bounds contain the angle.
+            // Cardinals absorb the tie regions because they are tested first.
+            for (int s = 0; s < 8 && result.sector < 0; s += 2) {
+                if (angular_distance(wrapped, s * 45.0f) <= cardinal_half_width) {
+                    result.sector = s;
+                }
+            }
+            for (int s = 1; s < 8 && result.sector < 0; s += 2) {
+                if (angular_distance(wrapped, s * 45.0f) < 45.0f - cardinal_half_width) {
+                    result.sector = s;
+                }
+            }
+        }
+
+        if (result.sector >= 0) {
+            result.bits = sector_bits[result.sector];
+            const float center_rad = result.sector * 45.0f * 0.0174533f;
+            result.dirX = std::cos(center_rad) * std::min(mag, 1.0f);
+            result.dirY = std::sin(center_rad) * std::min(mag, 1.0f);
+        }
+        return result;
     }
-    return bits;
 }
 
 void vr::poll_inputs() {
@@ -85,8 +143,12 @@ bool vr::get_n64_input(int controller_num, uint16_t *buttons, float *x, float *y
 
     uint16_t vr_buttons = 0;
 
-    // Left controller: locomotion + support buttons.
-    vr_buttons |= synthesize_dpad(snap.left.stickX, snap.left.stickY);
+    // Left controller: locomotion + support buttons. The held sector persists
+    // across polls (single SI-thread caller) for hysteresis.
+    static int held_sector = -1;
+    const SectorResult move = map_stick_sector(snap.left.stickX, snap.left.stickY, held_sector);
+    held_sector = move.sector;
+    vr_buttons |= move.bits;
     if (snap.left.trigger > trigger_threshold) vr_buttons |= N64_Z;
     if (snap.left.squeeze > squeeze_threshold) vr_buttons |= N64_L;
     if (snap.left.primaryButton)   vr_buttons |= N64_C_LEFT;  // X: Special Weapon
@@ -104,10 +166,11 @@ bool vr::get_n64_input(int controller_num, uint16_t *buttons, float *x, float *y
 
     *buttons |= vr_buttons;
 
-    // Also feed the left stick into the analog axes in case any code path reads
-    // them (movement is d-pad driven in MM64, but this costs nothing).
-    *x = std::clamp(*x + snap.left.stickX, -1.0f, 1.0f);
-    *y = std::clamp(*y + snap.left.stickY, -1.0f, 1.0f);
+    // Feed the analog axes the SAME direction the d-pad bits describe (sector
+    // center, not the raw push), so a game path reading the stick can never
+    // disagree with the synthesized d-pad and cause off-axis drift.
+    *x = std::clamp(*x + move.dirX, -1.0f, 1.0f);
+    *y = std::clamp(*y + move.dirY, -1.0f, 1.0f);
 
     return connected;
 }
