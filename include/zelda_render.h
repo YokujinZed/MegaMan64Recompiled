@@ -55,6 +55,9 @@ namespace zelda64 {
         // off, the renderer is down, or the XR session is not running.
         void set_vr_input_source(RT64::XRContext *context);
         RT64::XRInputSnapshot sample_vr_input();
+        // Residual gaze-vs-camera yaw in degrees for the camera-follow
+        // controller (NaN when unknown); generation increments as it updates.
+        float sample_vr_head_offset_deg(uint64_t &out_generation);
 #endif
 
         void trigger_texture_pack_update();

@@ -31,6 +31,18 @@ namespace zelda64 {
     void set_vr_stereo_enabled(bool enabled);
     bool get_vr_head_tracking_enabled();
     void set_vr_head_tracking_enabled(bool enabled);
+    // Camera-follow (head yaw steers the game camera). Sign constants are
+    // field-calibration knobs; all tunable without rebuilds via vr.json.
+    bool get_vr_follow_enabled();
+    void set_vr_follow_enabled(bool enabled);
+    float get_vr_follow_engage_deg();
+    void set_vr_follow_engage_deg(float v);
+    float get_vr_follow_release_deg();
+    void set_vr_follow_release_deg(float v);
+    float get_vr_follow_transfer_sign();
+    void set_vr_follow_transfer_sign(float v);
+    float get_vr_follow_inject_sign();
+    void set_vr_follow_inject_sign(float v);
     float get_vr_units_per_meter();
     void set_vr_units_per_meter(float units);
     void reset_vr_settings();

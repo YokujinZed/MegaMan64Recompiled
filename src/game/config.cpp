@@ -454,6 +454,11 @@ static std::atomic_bool vr_enabled = false;
 static std::atomic_bool vr_stereo_enabled = false;
 static std::atomic_bool vr_head_tracking_enabled = false;
 static std::atomic<float> vr_units_per_meter = 100.0f;
+static std::atomic_bool vr_follow_enabled = false;
+static std::atomic<float> vr_follow_engage_deg = 12.0f;
+static std::atomic<float> vr_follow_release_deg = 5.0f;
+static std::atomic<float> vr_follow_transfer_sign = 1.0f;
+static std::atomic<float> vr_follow_inject_sign = 1.0f;
 
 bool zelda64::get_vr_enabled() {
     return vr_enabled.load();
@@ -479,6 +484,17 @@ void zelda64::set_vr_head_tracking_enabled(bool enabled) {
     vr_head_tracking_enabled.store(enabled);
 }
 
+bool zelda64::get_vr_follow_enabled() { return vr_follow_enabled.load(); }
+void zelda64::set_vr_follow_enabled(bool enabled) { vr_follow_enabled.store(enabled); }
+float zelda64::get_vr_follow_engage_deg() { return vr_follow_engage_deg.load(); }
+void zelda64::set_vr_follow_engage_deg(float v) { vr_follow_engage_deg.store(v); }
+float zelda64::get_vr_follow_release_deg() { return vr_follow_release_deg.load(); }
+void zelda64::set_vr_follow_release_deg(float v) { vr_follow_release_deg.store(v); }
+float zelda64::get_vr_follow_transfer_sign() { return vr_follow_transfer_sign.load(); }
+void zelda64::set_vr_follow_transfer_sign(float v) { vr_follow_transfer_sign.store(v); }
+float zelda64::get_vr_follow_inject_sign() { return vr_follow_inject_sign.load(); }
+void zelda64::set_vr_follow_inject_sign(float v) { vr_follow_inject_sign.store(v); }
+
 float zelda64::get_vr_units_per_meter() {
     return vr_units_per_meter.load();
 }
@@ -492,6 +508,11 @@ void zelda64::reset_vr_settings() {
     vr_stereo_enabled.store(false);
     vr_head_tracking_enabled.store(false);
     vr_units_per_meter.store(100.0f);
+    vr_follow_enabled.store(false);
+    vr_follow_engage_deg.store(12.0f);
+    vr_follow_release_deg.store(5.0f);
+    vr_follow_transfer_sign.store(1.0f);
+    vr_follow_inject_sign.store(1.0f);
 }
 
 bool save_vr_config(const std::filesystem::path& path) {
@@ -501,6 +522,11 @@ bool save_vr_config(const std::filesystem::path& path) {
     config_json["stereo_enabled"] = zelda64::get_vr_stereo_enabled();
     config_json["head_tracking"] = zelda64::get_vr_head_tracking_enabled();
     config_json["units_per_meter"] = zelda64::get_vr_units_per_meter();
+    config_json["follow_enabled"] = zelda64::get_vr_follow_enabled();
+    config_json["follow_engage_deg"] = zelda64::get_vr_follow_engage_deg();
+    config_json["follow_release_deg"] = zelda64::get_vr_follow_release_deg();
+    config_json["follow_transfer_sign"] = zelda64::get_vr_follow_transfer_sign();
+    config_json["follow_inject_sign"] = zelda64::get_vr_follow_inject_sign();
 
     return save_json_with_backups(path, config_json);
 }
@@ -516,6 +542,11 @@ bool load_vr_config(const std::filesystem::path& path) {
     call_if_key_exists(zelda64::set_vr_stereo_enabled, config_json, "stereo_enabled");
     call_if_key_exists(zelda64::set_vr_head_tracking_enabled, config_json, "head_tracking");
     call_if_key_exists(zelda64::set_vr_units_per_meter, config_json, "units_per_meter");
+    call_if_key_exists(zelda64::set_vr_follow_enabled, config_json, "follow_enabled");
+    call_if_key_exists(zelda64::set_vr_follow_engage_deg, config_json, "follow_engage_deg");
+    call_if_key_exists(zelda64::set_vr_follow_release_deg, config_json, "follow_release_deg");
+    call_if_key_exists(zelda64::set_vr_follow_transfer_sign, config_json, "follow_transfer_sign");
+    call_if_key_exists(zelda64::set_vr_follow_inject_sign, config_json, "follow_inject_sign");
     return true;
 }
 

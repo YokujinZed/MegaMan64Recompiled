@@ -6,6 +6,7 @@
 #include <cmath>
 
 #include "recomp_input.h"
+#include "zelda_config.h"
 #include "zelda_render.h"
 
 // N64 pad bits (see DEFINE_N64_BUTTON_INPUTS in recomp_input.h).
@@ -163,6 +164,57 @@ bool vr::get_n64_input(int controller_num, uint16_t *buttons, float *x, float *y
     if (snap.right.squeeze > squeeze_threshold) vr_buttons |= N64_R;
     if (snap.right.primaryButton)   vr_buttons |= N64_A;      // A: Jump
     if (snap.right.secondaryButton) vr_buttons |= N64_C_DOWN; // B: Interact
+
+    // Camera-follow: inject the game's own rotate button until the camera
+    // catches up to the gaze. User rotate input (physical or stick) always
+    // wins; a watchdog backs off when the camera provably isn't responding
+    // (lock-on, cutscenes, fixed-camera rooms).
+    if (zelda64::get_vr_follow_enabled()) {
+        static bool follow_active = false;
+        static int follow_polls = 0;
+        static int backoff_polls = 0;
+        static float follow_start_abs = 0.0f;
+        static uint64_t last_generation = 0;
+
+        uint64_t generation = 0;
+        const float residual = zelda64::renderer::sample_vr_head_offset_deg(generation);
+        const bool fresh = (generation != last_generation);
+        last_generation = generation;
+        const bool user_rotating = ((*buttons | vr_buttons) & (N64_L | N64_R)) != 0;
+        const float signedResidual = residual * zelda64::get_vr_follow_inject_sign();
+
+        if (std::isnan(residual) || user_rotating || (backoff_polls > 0)) {
+            follow_active = false;
+            follow_polls = 0;
+            if (backoff_polls > 0) backoff_polls--;
+        }
+        else {
+            const float absResidual = std::abs(residual);
+            if (!follow_active && (absResidual > zelda64::get_vr_follow_engage_deg())) {
+                follow_active = true;
+                follow_polls = 0;
+                follow_start_abs = absResidual;
+            }
+            else if (follow_active && (absResidual < zelda64::get_vr_follow_release_deg())) {
+                follow_active = false;
+            }
+
+            if (follow_active) {
+                vr_buttons |= (signedResidual > 0.0f) ? N64_R : N64_L;
+                // Watchdog: if a second of injection produced no progress, the
+                // camera isn't listening here — back off for ~2 seconds.
+                if (fresh) follow_polls++;
+                if (follow_polls > 60) {
+                    if (absResidual > (follow_start_abs - 2.0f)) {
+                        follow_active = false;
+                        backoff_polls = 120;
+                    }
+                    follow_polls = 0;
+                    follow_start_abs = absResidual;
+                }
+            }
+        }
+    }
 
     *buttons |= vr_buttons;
 

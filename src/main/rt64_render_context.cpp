@@ -15,6 +15,7 @@
 #include "zelda_config.h"
 #include "recomp_ui.h"
 #include "concurrentqueue.h"
+#include <limits>
 #include <mutex>
 
 static RT64::UserConfiguration::Antialiasing device_max_msaa = RT64::UserConfiguration::Antialiasing::None;
@@ -346,6 +347,7 @@ zelda64::renderer::RT64Context::RT64Context(uint8_t* rdram, ultramodern::rendere
         app->xrContext->setStereoEnabled(zelda64::get_vr_stereo_enabled());
         app->xrContext->setHeadTrackingEnabled(zelda64::get_vr_head_tracking_enabled());
         app->xrContext->setUnitsPerMeter(zelda64::get_vr_units_per_meter());
+        app->xrContext->setFollowTransfer(zelda64::get_vr_follow_enabled(), zelda64::get_vr_follow_transfer_sign());
     }
 #endif
 }
@@ -367,6 +369,15 @@ RT64::XRInputSnapshot zelda64::renderer::sample_vr_input() {
         return vr_input_source->sampleInput();
     }
     return {};
+}
+
+float zelda64::renderer::sample_vr_head_offset_deg(uint64_t &out_generation) {
+    const std::lock_guard<std::mutex> lock(vr_input_mutex);
+    if (vr_input_source != nullptr) {
+        return vr_input_source->sampleHeadOffsetDegrees(out_generation);
+    }
+    out_generation = 0;
+    return std::numeric_limits<float>::quiet_NaN();
 }
 #endif
 
