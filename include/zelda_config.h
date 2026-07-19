@@ -27,6 +27,10 @@ namespace zelda64 {
     // VR. Read once at renderer creation (launch-only); persisted in vr.json.
     bool get_vr_enabled();
     void set_vr_enabled(bool enabled);
+    bool get_vr_stereo_enabled();
+    void set_vr_stereo_enabled(bool enabled);
+    float get_vr_units_per_meter();
+    void set_vr_units_per_meter(float units);
     void reset_vr_settings();
     
     enum class FilmGrainMode {

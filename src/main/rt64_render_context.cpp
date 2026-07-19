@@ -330,6 +330,10 @@ zelda64::renderer::RT64Context::RT64Context(uint8_t* rdram, ultramodern::rendere
 
 #ifdef RT64_XR_SUPPORT
     set_vr_input_source(app->xrContext.get());
+    if (app->xrContext != nullptr) {
+        app->xrContext->setStereoEnabled(zelda64::get_vr_stereo_enabled());
+        app->xrContext->setUnitsPerMeter(zelda64::get_vr_units_per_meter());
+    }
 #endif
 }
 
