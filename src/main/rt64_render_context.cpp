@@ -170,9 +170,12 @@ void set_application_user_config(RT64::Application* application, const ultramode
 #ifdef RT64_XR_SUPPORT
     // Stereo raw-copies the eye framebuffers into XR swapchains, and XR
     // runtimes don't offer the HDR framebuffer format — force standard color
-    // whenever stereo is on so the eye format is always accepted.
+    // whenever stereo is on so the eye format is always accepted. Also force
+    // MSAA off: the per-eye offscreen targets use the non-MSAA override path,
+    // and mixing MSAA's resolve-from-target path with stereo is unsupported.
     if (zelda64::get_vr_enabled() && zelda64::get_vr_stereo_enabled()) {
         application->userConfig.internalColorFormat = RT64::UserConfiguration::InternalColorFormat::Standard;
+        application->userConfig.antialiasing = RT64::UserConfiguration::Antialiasing::None;
     }
 #endif
 }
