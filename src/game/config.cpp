@@ -452,6 +452,7 @@ bool load_controls_config(const std::filesystem::path& path) {
 
 static std::atomic_bool vr_enabled = false;
 static std::atomic_bool vr_stereo_enabled = false;
+static std::atomic_bool vr_head_tracking_enabled = false;
 static std::atomic<float> vr_units_per_meter = 100.0f;
 
 bool zelda64::get_vr_enabled() {
@@ -470,6 +471,14 @@ void zelda64::set_vr_stereo_enabled(bool enabled) {
     vr_stereo_enabled.store(enabled);
 }
 
+bool zelda64::get_vr_head_tracking_enabled() {
+    return vr_head_tracking_enabled.load();
+}
+
+void zelda64::set_vr_head_tracking_enabled(bool enabled) {
+    vr_head_tracking_enabled.store(enabled);
+}
+
 float zelda64::get_vr_units_per_meter() {
     return vr_units_per_meter.load();
 }
@@ -481,6 +490,7 @@ void zelda64::set_vr_units_per_meter(float units) {
 void zelda64::reset_vr_settings() {
     vr_enabled.store(false);
     vr_stereo_enabled.store(false);
+    vr_head_tracking_enabled.store(false);
     vr_units_per_meter.store(100.0f);
 }
 
@@ -489,6 +499,7 @@ bool save_vr_config(const std::filesystem::path& path) {
 
     config_json["vr_enabled"] = zelda64::get_vr_enabled();
     config_json["stereo_enabled"] = zelda64::get_vr_stereo_enabled();
+    config_json["head_tracking"] = zelda64::get_vr_head_tracking_enabled();
     config_json["units_per_meter"] = zelda64::get_vr_units_per_meter();
 
     return save_json_with_backups(path, config_json);
@@ -503,6 +514,7 @@ bool load_vr_config(const std::filesystem::path& path) {
     zelda64::reset_vr_settings();
     call_if_key_exists(zelda64::set_vr_enabled, config_json, "vr_enabled");
     call_if_key_exists(zelda64::set_vr_stereo_enabled, config_json, "stereo_enabled");
+    call_if_key_exists(zelda64::set_vr_head_tracking_enabled, config_json, "head_tracking");
     call_if_key_exists(zelda64::set_vr_units_per_meter, config_json, "units_per_meter");
     return true;
 }

@@ -29,6 +29,8 @@ namespace zelda64 {
     void set_vr_enabled(bool enabled);
     bool get_vr_stereo_enabled();
     void set_vr_stereo_enabled(bool enabled);
+    bool get_vr_head_tracking_enabled();
+    void set_vr_head_tracking_enabled(bool enabled);
     float get_vr_units_per_meter();
     void set_vr_units_per_meter(float units);
     void reset_vr_settings();

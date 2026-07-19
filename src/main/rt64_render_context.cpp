@@ -344,6 +344,7 @@ zelda64::renderer::RT64Context::RT64Context(uint8_t* rdram, ultramodern::rendere
     set_vr_input_source(app->xrContext.get());
     if (app->xrContext != nullptr) {
         app->xrContext->setStereoEnabled(zelda64::get_vr_stereo_enabled());
+        app->xrContext->setHeadTrackingEnabled(zelda64::get_vr_head_tracking_enabled());
         app->xrContext->setUnitsPerMeter(zelda64::get_vr_units_per_meter());
     }
 #endif
