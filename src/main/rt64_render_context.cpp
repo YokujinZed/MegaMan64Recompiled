@@ -166,6 +166,15 @@ void set_application_user_config(RT64::Application* application, const ultramode
     application->userConfig.refreshRateTarget = config.rr_manual_value;
     application->userConfig.internalColorFormat = to_rt64(config.hpfb_option);
     application->userConfig.displayBuffering = RT64::UserConfiguration::DisplayBuffering::Triple;
+
+#ifdef RT64_XR_SUPPORT
+    // Stereo raw-copies the eye framebuffers into XR swapchains, and XR
+    // runtimes don't offer the HDR framebuffer format — force standard color
+    // whenever stereo is on so the eye format is always accepted.
+    if (zelda64::get_vr_enabled() && zelda64::get_vr_stereo_enabled()) {
+        application->userConfig.internalColorFormat = RT64::UserConfiguration::InternalColorFormat::Standard;
+    }
+#endif
 }
 
 ultramodern::renderer::SetupResult map_setup_result(RT64::Application::SetupResult rt64_result) {
