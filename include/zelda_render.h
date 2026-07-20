@@ -58,6 +58,9 @@ namespace zelda64 {
         // Residual gaze-vs-camera yaw in degrees for the camera-follow
         // controller (NaN when unknown); generation increments as it updates.
         float sample_vr_head_offset_deg(uint64_t &out_generation);
+        // The mux reports active follow injection so only follow-caused camera
+        // rotation is transferred (user turns rotate the world normally).
+        void set_vr_follow_injecting(bool injecting);
 #endif
 
         void trigger_texture_pack_update();

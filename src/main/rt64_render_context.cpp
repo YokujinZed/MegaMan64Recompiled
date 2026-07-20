@@ -379,6 +379,13 @@ float zelda64::renderer::sample_vr_head_offset_deg(uint64_t &out_generation) {
     out_generation = 0;
     return std::numeric_limits<float>::quiet_NaN();
 }
+
+void zelda64::renderer::set_vr_follow_injecting(bool injecting) {
+    const std::lock_guard<std::mutex> lock(vr_input_mutex);
+    if (vr_input_source != nullptr) {
+        vr_input_source->setFollowInjecting(injecting);
+    }
+}
 #endif
 
 zelda64::renderer::RT64Context::~RT64Context() {
