@@ -654,6 +654,7 @@ int main(int argc, char** argv) {
     REGISTER_FUNC(recomp_get_target_hud_aspect_ratio);
 #ifdef RT64_XR_SUPPORT
     REGISTER_FUNC(recomp_set_player_pose);
+    REGISTER_FUNC(recomp_vr_first_person_enabled);
 #endif
     //REGISTER_FUNC(recomp_get_target_framerate);
     //REGISTER_FUNC(recomp_get_autosave_enabled);

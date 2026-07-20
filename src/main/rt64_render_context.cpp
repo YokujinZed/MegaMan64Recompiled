@@ -343,8 +343,9 @@ zelda64::renderer::RT64Context::RT64Context(uint8_t* rdram, ultramodern::rendere
 
 #ifdef RT64_XR_SUPPORT
     // Opened regardless of headset presence: a flat run still proves whether
-    // the game patch is publishing player state.
+    // the game patch is publishing player state, and can calibrate.
     vr_telemetry_open();
+    RT64::SetVRTelemetrySink(&zelda64::renderer::vr_telemetry_line, zelda64::get_vr_pose_telemetry());
     set_vr_input_source(app->xrContext.get());
     if (app->xrContext != nullptr) {
         app->xrContext->setStereoEnabled(zelda64::get_vr_stereo_enabled());
@@ -352,6 +353,7 @@ zelda64::renderer::RT64Context::RT64Context(uint8_t* rdram, ultramodern::rendere
         app->xrContext->setUnitsPerMeter(zelda64::get_vr_units_per_meter());
         app->xrContext->setFollowTransfer(zelda64::get_vr_follow_enabled(), zelda64::get_vr_follow_transfer_sign());
         app->xrContext->setPoseTelemetryEnabled(zelda64::get_vr_pose_telemetry());
+        app->xrContext->setFirstPerson(zelda64::get_vr_first_person(), zelda64::get_vr_fp_forward(), zelda64::get_vr_fp_height());
         app->xrContext->setTelemetrySink(&zelda64::renderer::vr_telemetry_line);
     }
 #endif

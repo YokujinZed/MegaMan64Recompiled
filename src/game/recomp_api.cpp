@@ -217,6 +217,15 @@ extern "C" void recomp_set_player_pose(uint8_t* rdram, recomp_context* ctx) {
 #endif
 }
 
+extern "C" void recomp_vr_first_person_enabled(uint8_t* rdram, recomp_context* ctx) {
+#ifdef RT64_XR_SUPPORT
+    const bool active = zelda64::get_vr_enabled() && zelda64::get_vr_first_person();
+    _return(ctx, static_cast<s32>(active));
+#else
+    _return(ctx, static_cast<s32>(0));
+#endif
+}
+
 extern "C" void recomp_get_camera_inputs(uint8_t* rdram, recomp_context* ctx) {
     float* x_out = _arg<0, float*>(rdram, ctx);
     float* y_out = _arg<1, float*>(rdram, ctx);

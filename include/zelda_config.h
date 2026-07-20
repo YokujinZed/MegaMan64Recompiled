@@ -47,6 +47,15 @@ namespace zelda64 {
     // camera so the axis mapping / yaw units can be solved from a short walk.
     bool get_vr_pose_telemetry();
     void set_vr_pose_telemetry(bool enabled);
+    // First person. The game bakes its camera into the world matrices, so the
+    // eye is moved by dollying the view forward to the player instead of
+    // rebuilding a camera; both offsets are in game units and hand-tunable.
+    bool get_vr_first_person();
+    void set_vr_first_person(bool enabled);
+    float get_vr_fp_forward();
+    void set_vr_fp_forward(float v);
+    float get_vr_fp_height();
+    void set_vr_fp_height(float v);
     float get_vr_units_per_meter();
     void set_vr_units_per_meter(float units);
     void reset_vr_settings();

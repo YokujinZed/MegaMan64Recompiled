@@ -56,3 +56,4 @@ recomp_get_target_aspect_ratio = 0x8F0000D0;
 recomp_get_target_hud_aspect_ratio = 0x8F0000D4;
 yield_self_1ms = 0x8F0000D8;
 recomp_set_player_pose = 0x8F0000DC;
+recomp_vr_first_person_enabled = 0x8F0000E0;

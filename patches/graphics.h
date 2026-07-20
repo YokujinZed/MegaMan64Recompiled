@@ -14,5 +14,8 @@ DECLARE_FUNC(float, recomp_get_resolution_scale);
 // frameSeq stamps the sample so the renderer can match it to a frame instead
 // of reading "latest" (the patch runs ahead of the workload thread).
 DECLARE_FUNC(void, recomp_set_player_pose, void*, u32);
+// Nonzero while VR first person is active, so the player's own model can be
+// skipped (you should not see the inside of your own head).
+DECLARE_FUNC(s32, recomp_vr_first_person_enabled);
 
 #endif

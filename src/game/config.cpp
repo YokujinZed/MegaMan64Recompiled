@@ -460,6 +460,9 @@ static std::atomic<float> vr_follow_release_deg = 5.0f;
 static std::atomic<float> vr_follow_transfer_sign = 1.0f;
 static std::atomic<float> vr_follow_inject_sign = 1.0f;
 static std::atomic_bool vr_pose_telemetry = false;
+static std::atomic_bool vr_first_person = false;
+static std::atomic<float> vr_fp_forward = 300.0f;
+static std::atomic<float> vr_fp_height = 0.0f;
 
 bool zelda64::get_vr_enabled() {
     return vr_enabled.load();
@@ -497,6 +500,12 @@ float zelda64::get_vr_follow_inject_sign() { return vr_follow_inject_sign.load()
 void zelda64::set_vr_follow_inject_sign(float v) { vr_follow_inject_sign.store(v); }
 bool zelda64::get_vr_pose_telemetry() { return vr_pose_telemetry.load(); }
 void zelda64::set_vr_pose_telemetry(bool enabled) { vr_pose_telemetry.store(enabled); }
+bool zelda64::get_vr_first_person() { return vr_first_person.load(); }
+void zelda64::set_vr_first_person(bool enabled) { vr_first_person.store(enabled); }
+float zelda64::get_vr_fp_forward() { return vr_fp_forward.load(); }
+void zelda64::set_vr_fp_forward(float v) { vr_fp_forward.store(v); }
+float zelda64::get_vr_fp_height() { return vr_fp_height.load(); }
+void zelda64::set_vr_fp_height(float v) { vr_fp_height.store(v); }
 
 float zelda64::get_vr_units_per_meter() {
     return vr_units_per_meter.load();
@@ -517,6 +526,9 @@ void zelda64::reset_vr_settings() {
     vr_follow_transfer_sign.store(1.0f);
     vr_follow_inject_sign.store(1.0f);
     vr_pose_telemetry.store(false);
+    vr_first_person.store(false);
+    vr_fp_forward.store(300.0f);
+    vr_fp_height.store(0.0f);
 }
 
 bool save_vr_config(const std::filesystem::path& path) {
@@ -532,6 +544,9 @@ bool save_vr_config(const std::filesystem::path& path) {
     config_json["follow_transfer_sign"] = zelda64::get_vr_follow_transfer_sign();
     config_json["follow_inject_sign"] = zelda64::get_vr_follow_inject_sign();
     config_json["pose_telemetry"] = zelda64::get_vr_pose_telemetry();
+    config_json["first_person"] = zelda64::get_vr_first_person();
+    config_json["fp_forward"] = zelda64::get_vr_fp_forward();
+    config_json["fp_height"] = zelda64::get_vr_fp_height();
 
     return save_json_with_backups(path, config_json);
 }
@@ -553,6 +568,9 @@ bool load_vr_config(const std::filesystem::path& path) {
     call_if_key_exists(zelda64::set_vr_follow_transfer_sign, config_json, "follow_transfer_sign");
     call_if_key_exists(zelda64::set_vr_follow_inject_sign, config_json, "follow_inject_sign");
     call_if_key_exists(zelda64::set_vr_pose_telemetry, config_json, "pose_telemetry");
+    call_if_key_exists(zelda64::set_vr_first_person, config_json, "first_person");
+    call_if_key_exists(zelda64::set_vr_fp_forward, config_json, "fp_forward");
+    call_if_key_exists(zelda64::set_vr_fp_height, config_json, "fp_height");
     return true;
 }
 

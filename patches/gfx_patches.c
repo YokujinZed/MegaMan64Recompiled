@@ -14,6 +14,7 @@ extern volatile u32 D_801FFBB0_1DAFB0;
 //@recomp VR first person: live player state and the gate that indicates
 // whether an actor context is active (title screens / transitions).
 DECLARE_FUNC(void, recomp_set_player_pose, void*, u32);
+DECLARE_FUNC(s32, recomp_vr_first_person_enabled);
 extern PlayerState D_802049B0_1DFDB0;
 extern s32 D_802049AC_1DFDAC;
 static u32 recomp_vr_frame_seq = 0;
@@ -37,6 +38,14 @@ RECOMP_PATCH void func_800283A8_37A8(s8 bufferIndex, s8 poolIndex, void *func, v
     GfxContext *gfxContext2;
 
     gfxContext = &D_802047F0_1DFBF0;
+
+    //@recomp VR first person: drop the player's own draws. The three MegaMan
+    // tag sites (body/face/mouth) all funnel through here, and clearing the
+    // tag is required so it cannot leak onto the next unrelated draw.
+    if ((funcData != 0) && (GET_TAG_ID(gCurrGfxTag) == MEGAMAN_TAG_ID) && recomp_vr_first_person_enabled()) {
+        gCurrGfxTag = 0;
+        return;
+    }
 
     if (gfxContext->bufferEnabled != 0) {
         taskNode = NULL;
