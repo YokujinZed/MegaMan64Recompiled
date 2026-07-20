@@ -192,6 +192,31 @@ extern "C" void recomp_get_invert_y_axis_mode(uint8_t* rdram, recomp_context* ct
     _return<s32>(ctx, zelda64::get_invert_y_axis_mode() == zelda64::AimInvertMode::On);
 }
 
+extern "C" void recomp_set_player_pose(uint8_t* rdram, recomp_context* ctx) {
+#ifdef RT64_XR_SUPPORT
+    // PlayerState layout (patches/common_structs.h): x @0x14, z @0x16,
+    // y @0x18 (declaration order), yaw @0x56, unk116 @0x116. A null pointer
+    // means no active actor context (title screen, transitions).
+    gpr player = (gpr)_arg<0, PTR(void)>(rdram, ctx);
+    uint32_t frame_seq = _arg<1, uint32_t>(rdram, ctx);
+
+    if (player == 0) {
+        zelda64::renderer::set_vr_player_pose(false, 0, 0, 0, 0, 0, frame_seq);
+        return;
+    }
+
+    // MEM_H sign-extends the s16 fields; which axis is vertical and the yaw
+    // units are calibration outputs, so the raw values travel unmodified.
+    int32_t f14 = (int16_t)MEM_H(0x14, player);
+    int32_t f16 = (int16_t)MEM_H(0x16, player);
+    int32_t f18 = (int16_t)MEM_H(0x18, player);
+    int32_t yaw = (int16_t)MEM_H(0x56, player);
+    int32_t yaw_aux = (int16_t)MEM_H(0x116, player);
+
+    zelda64::renderer::set_vr_player_pose(true, f14, f16, f18, yaw, yaw_aux, frame_seq);
+#endif
+}
+
 extern "C" void recomp_get_camera_inputs(uint8_t* rdram, recomp_context* ctx) {
     float* x_out = _arg<0, float*>(rdram, ctx);
     float* y_out = _arg<1, float*>(rdram, ctx);

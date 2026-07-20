@@ -459,6 +459,7 @@ static std::atomic<float> vr_follow_engage_deg = 12.0f;
 static std::atomic<float> vr_follow_release_deg = 5.0f;
 static std::atomic<float> vr_follow_transfer_sign = 1.0f;
 static std::atomic<float> vr_follow_inject_sign = 1.0f;
+static std::atomic_bool vr_pose_telemetry = false;
 
 bool zelda64::get_vr_enabled() {
     return vr_enabled.load();
@@ -494,6 +495,8 @@ float zelda64::get_vr_follow_transfer_sign() { return vr_follow_transfer_sign.lo
 void zelda64::set_vr_follow_transfer_sign(float v) { vr_follow_transfer_sign.store(v); }
 float zelda64::get_vr_follow_inject_sign() { return vr_follow_inject_sign.load(); }
 void zelda64::set_vr_follow_inject_sign(float v) { vr_follow_inject_sign.store(v); }
+bool zelda64::get_vr_pose_telemetry() { return vr_pose_telemetry.load(); }
+void zelda64::set_vr_pose_telemetry(bool enabled) { vr_pose_telemetry.store(enabled); }
 
 float zelda64::get_vr_units_per_meter() {
     return vr_units_per_meter.load();
@@ -513,6 +516,7 @@ void zelda64::reset_vr_settings() {
     vr_follow_release_deg.store(5.0f);
     vr_follow_transfer_sign.store(1.0f);
     vr_follow_inject_sign.store(1.0f);
+    vr_pose_telemetry.store(false);
 }
 
 bool save_vr_config(const std::filesystem::path& path) {
@@ -527,6 +531,7 @@ bool save_vr_config(const std::filesystem::path& path) {
     config_json["follow_release_deg"] = zelda64::get_vr_follow_release_deg();
     config_json["follow_transfer_sign"] = zelda64::get_vr_follow_transfer_sign();
     config_json["follow_inject_sign"] = zelda64::get_vr_follow_inject_sign();
+    config_json["pose_telemetry"] = zelda64::get_vr_pose_telemetry();
 
     return save_json_with_backups(path, config_json);
 }
@@ -547,6 +552,7 @@ bool load_vr_config(const std::filesystem::path& path) {
     call_if_key_exists(zelda64::set_vr_follow_release_deg, config_json, "follow_release_deg");
     call_if_key_exists(zelda64::set_vr_follow_transfer_sign, config_json, "follow_transfer_sign");
     call_if_key_exists(zelda64::set_vr_follow_inject_sign, config_json, "follow_inject_sign");
+    call_if_key_exists(zelda64::set_vr_pose_telemetry, config_json, "pose_telemetry");
     return true;
 }
 

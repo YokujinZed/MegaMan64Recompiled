@@ -11,6 +11,13 @@ void recomp_check_camera_jump();
 void yield_self_1ms(void);
 extern volatile u32 D_801FFBB0_1DAFB0;
 
+//@recomp VR first person: live player state and the gate that indicates
+// whether an actor context is active (title screens / transitions).
+DECLARE_FUNC(void, recomp_set_player_pose, void*, u32);
+extern PlayerState D_802049B0_1DFDB0;
+extern s32 D_802049AC_1DFDAC;
+static u32 recomp_vr_frame_seq = 0;
+
 //nuGfxTaskAllEndWait
 RECOMP_PATCH void func_80092EB0_6E2B0() {
     while (D_801FFBB0_1DAFB0) {
@@ -229,6 +236,11 @@ RECOMP_PATCH void func_800276EC_2AEC(s32 arg0) {
         // recomp_printf("-----Begin Frame----- \n");
         //@recomp check if the camera has jumped this frame
         recomp_check_camera_jump();
+
+        //@recomp VR: publish the player pose for first-person anchoring. Runs
+        // at frame start, after the game state update, so the pose is final.
+        recomp_vr_frame_seq += 1;
+        recomp_set_player_pose(D_802049AC_1DFDAC != 0 ? &D_802049B0_1DFDB0 : (void *)0, recomp_vr_frame_seq);
         do {
             temp_v0 = gfxContext->fadeoutTimer;
             if (temp_v0 != 0) {

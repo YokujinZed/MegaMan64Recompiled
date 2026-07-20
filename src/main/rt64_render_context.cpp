@@ -342,12 +342,17 @@ zelda64::renderer::RT64Context::RT64Context(uint8_t* rdram, ultramodern::rendere
     high_precision_fb_enabled = app->shaderLibrary->usesHDR;
 
 #ifdef RT64_XR_SUPPORT
+    // Opened regardless of headset presence: a flat run still proves whether
+    // the game patch is publishing player state.
+    vr_telemetry_open();
     set_vr_input_source(app->xrContext.get());
     if (app->xrContext != nullptr) {
         app->xrContext->setStereoEnabled(zelda64::get_vr_stereo_enabled());
         app->xrContext->setHeadTrackingEnabled(zelda64::get_vr_head_tracking_enabled());
         app->xrContext->setUnitsPerMeter(zelda64::get_vr_units_per_meter());
         app->xrContext->setFollowTransfer(zelda64::get_vr_follow_enabled(), zelda64::get_vr_follow_transfer_sign());
+        app->xrContext->setPoseTelemetryEnabled(zelda64::get_vr_pose_telemetry());
+        app->xrContext->setTelemetrySink(&zelda64::renderer::vr_telemetry_line);
     }
 #endif
 }
@@ -378,6 +383,73 @@ float zelda64::renderer::sample_vr_head_offset_deg(uint64_t &out_generation) {
     }
     out_generation = 0;
     return std::numeric_limits<float>::quiet_NaN();
+}
+
+// Calibration telemetry sink. Its own file because stdio redirection is block
+// buffered and this must survive a hard exit; every line is flushed so a
+// killed session still yields data. Opened as soon as the renderer starts so
+// that "file missing" (telemetry off) is distinguishable from "file present
+// but no RAW lines" (patch never fired).
+static FILE *vr_telemetry_file = nullptr;
+static std::mutex vr_telemetry_mutex;
+
+void zelda64::renderer::vr_telemetry_open() {
+    if (!zelda64::get_vr_pose_telemetry()) {
+        return;
+    }
+
+    const std::lock_guard<std::mutex> lock(vr_telemetry_mutex);
+    if (vr_telemetry_file != nullptr) {
+        return;
+    }
+
+    const std::filesystem::path telemetry_path = zelda64::get_app_folder_path() / "vr_pose_telemetry.log";
+    vr_telemetry_file = fopen(telemetry_path.string().c_str(), "w");
+    if (vr_telemetry_file != nullptr) {
+        fprintf(vr_telemetry_file, "# VR pose calibration. RAW = player state from the game patch;\n");
+        fprintf(vr_telemetry_file, "# CAM = rendered camera position/yaw (needs an active VR session).\n");
+        fprintf(vr_telemetry_file, "# If only this header appears, the game never reached the patched draw.\n");
+        fflush(vr_telemetry_file);
+    }
+}
+
+void zelda64::renderer::vr_telemetry_line(const char *line) {
+    const std::lock_guard<std::mutex> lock(vr_telemetry_mutex);
+    if (vr_telemetry_file != nullptr) {
+        fputs(line, vr_telemetry_file);
+        fputc('\n', vr_telemetry_file);
+        fflush(vr_telemetry_file);
+    }
+}
+
+void zelda64::renderer::set_vr_player_pose(bool valid, int32_t f14, int32_t f16, int32_t f18, int32_t yaw, int32_t yaw_aux, uint32_t frame_seq) {
+    if (zelda64::get_vr_pose_telemetry()) {
+        static uint32_t raw_counter = 0;
+        if ((raw_counter++ % 30) == 0) {
+            char line[192];
+            if (valid) {
+                snprintf(line, sizeof(line), "RAW f14=%6d f16=%6d f18=%6d yaw=%6d aux=%6d seq=%u",
+                    f14, f16, f18, yaw, yaw_aux, frame_seq);
+            }
+            else {
+                snprintf(line, sizeof(line), "RAW no-actor-context seq=%u", frame_seq);
+            }
+            vr_telemetry_line(line);
+        }
+    }
+
+    const std::lock_guard<std::mutex> lock(vr_input_mutex);
+    if (vr_input_source != nullptr) {
+        RT64::XRPlayerPose pose;
+        pose.valid = valid;
+        pose.f14 = f14;
+        pose.f16 = f16;
+        pose.f18 = f18;
+        pose.yaw = yaw;
+        pose.yawAux = yaw_aux;
+        pose.frameSeq = frame_seq;
+        vr_input_source->setPlayerPose(pose);
+    }
 }
 
 void zelda64::renderer::set_vr_follow_injecting(bool injecting) {

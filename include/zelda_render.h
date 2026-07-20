@@ -61,6 +61,13 @@ namespace zelda64 {
         // The mux reports active follow injection so only follow-caused camera
         // rotation is transferred (user turns rotate the world normally).
         void set_vr_follow_injecting(bool injecting);
+        // First person: the game patch publishes the raw player state each
+        // frame. Fields are passed unconverted (axis mapping and yaw units are
+        // calibration values); valid=false means no active actor context.
+        void set_vr_player_pose(bool valid, int32_t f14, int32_t f16, int32_t f18, int32_t yaw, int32_t yaw_aux, uint32_t frame_seq);
+        // Calibration telemetry sink (own file, flushed per line).
+        void vr_telemetry_open();
+        void vr_telemetry_line(const char *line);
 #endif
 
         void trigger_texture_pack_update();

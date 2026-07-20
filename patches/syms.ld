@@ -55,3 +55,4 @@ recomputil_u32_value_hashmap_size = 0x8F0000CC;
 recomp_get_target_aspect_ratio = 0x8F0000D0;
 recomp_get_target_hud_aspect_ratio = 0x8F0000D4;
 yield_self_1ms = 0x8F0000D8;
+recomp_set_player_pose = 0x8F0000DC;

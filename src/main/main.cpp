@@ -652,6 +652,9 @@ int main(int argc, char** argv) {
     REGISTER_FUNC(recomp_get_window_resolution);
     REGISTER_FUNC(recomp_get_target_aspect_ratio);
     REGISTER_FUNC(recomp_get_target_hud_aspect_ratio);
+#ifdef RT64_XR_SUPPORT
+    REGISTER_FUNC(recomp_set_player_pose);
+#endif
     //REGISTER_FUNC(recomp_get_target_framerate);
     //REGISTER_FUNC(recomp_get_autosave_enabled);
     //REGISTER_FUNC(recomp_get_analog_cam_enabled);

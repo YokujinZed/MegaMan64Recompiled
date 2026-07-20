@@ -43,6 +43,10 @@ namespace zelda64 {
     void set_vr_follow_transfer_sign(float v);
     float get_vr_follow_inject_sign();
     void set_vr_follow_inject_sign(float v);
+    // First-person calibration: logs raw player state beside the rendered
+    // camera so the axis mapping / yaw units can be solved from a short walk.
+    bool get_vr_pose_telemetry();
+    void set_vr_pose_telemetry(bool enabled);
     float get_vr_units_per_meter();
     void set_vr_units_per_meter(float units);
     void reset_vr_settings();
